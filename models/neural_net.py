@@ -210,6 +210,8 @@ class TwoLayerNet(object):
 	  classify.
 
 	Returns:
+	- pred_prob: A numpy array of shape (N,C) giving the predicted probabilities
+	  for each of the elements of X.
 	- y_pred: A numpy array of shape (N,) giving predicted labels for each of
 	  the elements of X. For all i, y_pred[i] = c means that X[i] is predicted
 	  to have class c, where 0 <= c < C.

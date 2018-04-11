@@ -2,9 +2,9 @@ import numpy as np
 from random import shuffle
 from past.builtins import xrange
 
-def softmax_loss_naive(W, X, y, reg):
+def softmax_loss (W, X, y, reg):
   """
-  Softmax loss function, naive implementation (with loops)
+  Softmax loss function (vectorized)
 
   Inputs have dimension D, there are C classes, and we operate on minibatches
   of N examples.
@@ -19,47 +19,6 @@ def softmax_loss_naive(W, X, y, reg):
   Returns a tuple of:
   - loss as single float
   - gradient with respect to weights W; an array of same shape as W
-  """
-  # Initialize the loss and gradient to zero.
-  loss = 0.0
-  dW = np.zeros_like(W)
-
-
-  num_classes = W.shape[1]
-  num_train = X.shape[0]
-  for i in xrange(num_train):
-    scores = X[i].dot(W) # this is the prediction of training sample i, for each class
-    scores -= np.max(scores)
-
-    # Calculate the probabilities that the sample belongs to each class
-    probabilities = np.exp(scores) / np.sum(np.exp(scores))
-
-    # Loss is the log of the probability of the correct class
-    loss += -np.log(probabilities[y[i]])
-
-    probabilities[y[i]] -= 1 # calculate p-1 and later we'll put the negative back
-    
-    # dW is adjusted by each row being the X[i] pixel values by the probability vector
-    for j in xrange(num_classes):
-      dW[:,j] += X[i,:] * probabilities[j]
-
-  # Right now the loss is a sum over all training examples, but we want it
-  # to be an average instead so we divide by num_train.
-  loss /= num_train
-  dW /= num_train
-
-  # Add regularization to the loss.
-  loss += 0.5 * reg * np.sum(W * W)
-  dW += reg * W
-
-  return loss, dW
-
-
-def softmax_loss_vectorized(W, X, y, reg):
-  """
-  Softmax loss function, vectorized version.
-
-  Inputs and outputs are the same as softmax_loss_naive.
   """
   # Initialize the loss and gradient to zero.
   loss = 0.0
