@@ -6,25 +6,26 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 
+# Apply normalization for pretrained model
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225])
+
 # borrowed from http://pytorch.org/tutorials/advanced/neural_style_tutorial.html
 # and http://pytorch.org/tutorials/beginner/data_loading_tutorial.html
 # define a training image loader that specifies transforms on images. See documentation for more details.
 train_transformer = transforms.Compose([
-    transforms.Resize(64),  # resize the image to 64x64 (remove if images are already 64x64)
-    transforms.Grayscale(num_output_channels=1),
-    transforms.RandomHorizontalFlip(),  # randomly flip image horizontally
-    transforms.ToTensor()])  # transform it into a torch tensor
+    transforms.Resize(224),  # resize the image to 256x256
+    # transforms.RandomHorizontalFlip(),  # randomly flip image horizontally
+    transforms.ToTensor(),
+    normalize])  # transform it into a torch tensor
 
 # loader for evaluation, no horizontal flip
 eval_transformer = transforms.Compose([
-    transforms.Resize(64),  # resize the image to 64x64 (remove if images are already 64x64)
-    transforms.Grayscale(num_output_channels=1),
-    transforms.ToTensor()])  # transform it into a torch tensor
+    transforms.Resize(224),  # resize the image to 256x256
+    transforms.ToTensor(),
+    normalize])  # transform it into a torch tensor
 
-# Original images have size (512, 512) or (256, 256). Resizing to (64, 64) reduces the dataset size, 
-# and loading smaller images makes training faster.
-
-class FETALDataset(Dataset):
+class SatelliteDataset(Dataset):
     """
     A standard PyTorch definition of Dataset which defines the functions __len__ and __getitem__.
     """
@@ -37,7 +38,7 @@ class FETALDataset(Dataset):
             transform: (torchvision.transforms) transformation to apply on image
         """
         self.filenames = os.listdir(data_dir)
-        self.filenames = [os.path.join(data_dir, f) for f in self.filenames if f.endswith('.npy')]
+        self.filenames = [os.path.join(data_dir, f) for f in self.filenames if f.endswith('.jpg')]
 
         self.labels = [int(filename.split('/')[-1][0]) for filename in self.filenames]
         self.transform = transform
@@ -57,22 +58,9 @@ class FETALDataset(Dataset):
             image: (Tensor) transformed image
             label: (int) corresponding label of image
         """
-        raw_image = np.load(self.filenames[idx])    # load numpy array from .npy file
-        raw_image = raw_image * (255.0 / raw_image.max()) if raw_image.max() != 0 else raw_image
-
-        image3d = []
-        for i in np.arange(raw_image.shape[0]):
-            image = Image.fromarray(raw_image[i,:,:])          # PIL image
-            image = image.resize((64, 64), Image.BILINEAR)
-            image = self.transform(image)
-            image3d.append(image)
-        image = torch.stack(image3d, -1)
-        print(image.size())
-
-        # image = Image.fromarray(raw_image)          # PIL image
-        # image = image.resize((64, 64), Image.BILINEAR)
-        # image = self.transform(image)
-        return raw_image, self.labels[idx]
+        image = Image.open(self.filenames[idx])  # PIL image
+        image = self.transform(image)
+        return image, self.labels[idx]
 
 
 def fetch_dataloader(types, data_dir, params):
@@ -95,11 +83,11 @@ def fetch_dataloader(types, data_dir, params):
 
             # use the train_transformer if training data, else use eval_transformer without random flip
             if split == 'train':
-                dl = DataLoader(FETALDataset(path, train_transformer), batch_size=params.batch_size, shuffle=True,
+                dl = DataLoader(SatelliteDataset(path, train_transformer), batch_size=params.batch_size, shuffle=True,
                                         num_workers=params.num_workers,
                                         pin_memory=params.cuda)
             else:
-                dl = DataLoader(FETALDataset(path, eval_transformer), batch_size=params.batch_size, shuffle=False,
+                dl = DataLoader(SatelliteDataset(path, eval_transformer), batch_size=params.batch_size, shuffle=False,
                                 num_workers=params.num_workers,
                                 pin_memory=params.cuda)
 

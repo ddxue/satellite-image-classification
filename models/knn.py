@@ -51,14 +51,9 @@ class KNearestNeighbor(object):
     num_test = X.shape[0]
     num_train = self.X_train.shape[0]
     dists = np.zeros((num_test, num_train)) 
-    #########################################################################
-    # Compute the l2 distance between all test points and all training      #
-    # points without using any explicit loops, and store the result in      #
-    # dists.                                                                #
-    #                                                                       #
-    # You should implement this function using only basic array operations; #
-    # in particular you should not use functions from scipy.                #
-    #########################################################################
+
+    # Compute the l2 distance between all test points and all training
+    # points
     a2 = np.sum(self.X_train**2, axis=1).reshape(1, num_train) # (1, num_train)
     b2 = np.sum(X**2, axis=1).reshape(num_test, 1) # (num_test, 1)
     ab = np.matmul(X, self.X_train.T) # (num_test, num_train)
@@ -84,20 +79,15 @@ class KNearestNeighbor(object):
       # A list of length k storing the labels of the k nearest neighbors to
       # the ith test point.
       closest_y = []
-      #########################################################################
-      # Use the distance matrix to find the k nearest neighbors of the ith    #
-      # testing point, and use self.y_train to find the labels of these       #
-      # neighbors. Store these labels in closest_y.                           #
-      # Hint: Look up the function numpy.argsort.                             #
-      #########################################################################
+      
+      # Use the distance matrix to find the k nearest neighbors of the ith    
+      # testing point, and use self.y_train to find the labels of these       
+      # neighbors.  
       sorted_idx = np.argsort(dists[i])
       closest_y = self.y_train[sorted_idx[:k]]
-      #########################################################################
-      # Now that you have found the labels of the k nearest neighbors, you    #
-      # need to find the most common label in the list closest_y of labels.   #
-      # Store this label in y_pred[i]. Break ties by choosing the smaller     #
-      # label.                                                                #
-      #########################################################################
+
+      # Find the most common label in the list closest_y of labels and store  
+      # this label in y_pred[i]. Break ties by choosing the smaller label.    
       y_pred[i] = np.argmax(np.bincount(closest_y)) # will already break ties as desired
 
     return y_pred

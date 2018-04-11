@@ -6,21 +6,19 @@ import os
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as optim
+import torchvision.models as models
 from torch.autograd import Variable
 from tqdm import tqdm
 
 import utils
-import model.net as net
-import model.unet as unet
-import model.vnet as vnet
-import model.unet3d as unet3d
-import model.data_loader as data_loader
+import models.net as net
+import models.data_loader as data_loader
 from evaluate import evaluate
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', default='0', help="Which GPU to run on, if multiple")
-parser.add_argument('--data_dir', default='../../data/FETAL', help="Directory containing the dataset")
+parser.add_argument('--data_dir', default='data', help="Directory containing the dataset")
 parser.add_argument('--model_dir', default='experiments/base_model', help="Directory containing params.json")
 parser.add_argument('--restore_file', default=None,
                     help="Optional, name of the file in --model_dir containing weights to reload before \
@@ -29,7 +27,6 @@ parser.add_argument('--restore_file', default=None,
 
 def train(model, optimizer, loss_fn, dataloader, metrics, params):
     """Train the model on `num_steps` batches
-
     Args:
         model: (torch.nn.Module) the neural network
         optimizer: (torch.optim) optimizer for parameters of model
@@ -94,7 +91,6 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
 def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_fn, metrics, params, model_dir,
                        restore_file=None):
     """Train the model and evaluate every epoch.
-
     Args:
         model: (torch.nn.Module) the neural network
         train_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches training data
@@ -147,6 +143,7 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         last_json_path = os.path.join(model_dir, "metrics_val_last_weights.json")
         utils.save_dict_to_json(val_metrics, last_json_path)
 
+
 if __name__ == '__main__':
 
     # Load the parameters from json file
@@ -156,7 +153,6 @@ if __name__ == '__main__':
     params = utils.Params(json_path)
 
     # use GPU if available
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     params.cuda = torch.cuda.is_available()
 
     # Set the random seed for reproducible experiments
@@ -166,12 +162,9 @@ if __name__ == '__main__':
     # Set the logger
     utils.set_logger(os.path.join(args.model_dir, 'train.log'))
 
-    ################
-    ##### DATA #####
-    ################
     # Create the input data pipeline
     logging.info("Loading the datasets...")
-    
+
     # fetch dataloaders
     dataloaders = data_loader.fetch_dataloader(['train', 'val'], args.data_dir, params)
     train_dl = dataloaders['train']
@@ -179,17 +172,34 @@ if __name__ == '__main__':
 
     logging.info("- done.")
 
-    #################
-    ##### TRAIN #####
-    #################
-
     # Define the model and optimizer
-    model = unet3d.UNet3D(params).cuda() if params.cuda else unet3d.UNet3D(params)
-    optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
+    model = models.densenet121(pretrained='imagenet')
+    # model = net.Net(params, num_classes=4).cuda() if params.cuda else net.Net(params, num_classes=4)
+    
+    # Freeze all the layers!
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Change the last layer to our number of classes
+    # Parameters of newly constructed modules have requires_grad=True by default
+    n_features = model.classifier.in_features
+    n_class = 4
+    model.classifier = nn.Linear(n_features, n_class)
+
+    # Unfreeze the last layer
+    for param in model.classifier.parameters():
+        param.requires_grad = True
+
+    # Definte the loss
+    loss_fn = nn.CrossEntropyLoss()
+    # loss_fn = net.loss_fn
+
+    # Optimize only the classifier
+    optimizer = optim.Adam(model.classifier.parameters(), lr=params.learning_rate)
+    # optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
 
     # fetch loss function and metrics
-    loss_fn = unet.loss_fn
-    metrics = unet.metrics
+    metrics = net.metrics
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))

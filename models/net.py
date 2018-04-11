@@ -1,4 +1,4 @@
-"""Defines the neural network, losss function and metrics"""
+"""Defines the neural network, loss function and metrics"""
 
 import numpy as np
 import torch
@@ -19,7 +19,7 @@ class Net(nn.Module):
     The documentation for all the various components available o you is here: http://pytorch.org/docs/master/nn.html
     """
 
-    def __init__(self, params):
+    def __init__(self, params, num_classes):
         """
         We define an convolutional network that predicts the sign from an image. The components
         required are:
@@ -33,12 +33,11 @@ class Net(nn.Module):
         """
         super(Net, self).__init__()
         self.num_channels = params.num_channels
-        num_classes = 2
         
         # each of the convolution layers below have the arguments (input_channels, output_channels, filter_size,
         # stride, padding). We also include batch normalisation layers that help stabilise training.
         # For more details on how to use these layers, check out the documentation.
-        self.conv1 = nn.Conv2d(1, self.num_channels, 3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(3, self.num_channels, 3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(self.num_channels)
         self.conv2 = nn.Conv2d(self.num_channels, self.num_channels*2, 3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(self.num_channels*2)
@@ -54,17 +53,14 @@ class Net(nn.Module):
     def forward(self, s):
         """
         This function defines how we use the components of our network to operate on an input batch.
-
         Args:
-            s: (Variable) contains a batch of images, of dimension batch_size x num_channels x 64 x 64 .
-
+            s: (Variable) contains a batch of images, of dimension batch_size x 3 x 64 x 64 .
         Returns:
             out: (Variable) dimension batch_size x 6 with the log probabilities for the labels of each image.
-
         Note: the dimensions after each step are provided
         """
-        #                                                  -> batch_size x 1 x 64 x 64
-        # we apply the convolution layers, followed by batch normalisation, maxpool and relu x 1
+        #                                                  -> batch_size x 3 x 64 x 64
+        # we apply the convolution layers, followed by batch normalisation, maxpool and relu x 3
         s = self.bn1(self.conv1(s))                         # batch_size x num_channels x 64 x 64
         s = F.relu(F.max_pool2d(s, 2))                      # batch_size x num_channels x 32 x 32
         s = self.bn2(self.conv2(s))                         # batch_size x num_channels*2 x 32 x 32
@@ -78,7 +74,7 @@ class Net(nn.Module):
         # apply 2 fully connected layers with dropout
         s = F.dropout(F.relu(self.fcbn1(self.fc1(s))), 
             p=self.dropout_rate, training=self.training)    # batch_size x self.num_channels*4
-        s = self.fc2(s)                                     # batch_size x 2  
+        s = self.fc2(s)                                     # batch_size x 6
 
         # apply log softmax on each image's output (this is recommended over applying softmax
         # since it is numerically more stable)
