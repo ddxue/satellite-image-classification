@@ -1,5 +1,4 @@
 """
-
 The data will be labeled according:
 	0=Desert
 	1=Vegetation
